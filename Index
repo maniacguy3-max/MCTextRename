@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Text Color Simulator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            background-color: #2b2b2b;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: 'VT323', monospace;
+            font-size: 3rem;
+            text-shadow: 2px 2px 0 #000;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p {
+            color: #aaaaaa;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #3c3f41;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            border: 2px solid #1e1e1e;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+            color: #d3d3d3;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 16px;
+            resize: vertical;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #55ff55;
+        }
+
+        .preview-box {
+            background-color: #000000;
+            border: 4px solid #555;
+            border-radius: 4px;
+            min-height: 100px;
+            padding: 15px;
+            font-family: 'VT323', monospace; /* Minecraft-style font */
+            font-size: 24px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+
+        button {
+            background-color: #55ff55;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+        }
+
+        button:hover {
+            background-color: #33cc33;
+        }
+
+        .cheatsheet {
+            margin-top: 30px;
+            background-color: #2b2b2b;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .cheat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Minecraft Text Formatter</h1>
+    <p>Type your text using <b>&</b> or <b>§</b> codes to see a live preview. Then click copy!</p>
+
+    <div class="container">
+        <label for="mc-input">Input Text:</label>
+        <textarea id="mc-input" placeholder="Example: &cHello &lWorld!"></textarea>
+
+        <label>Live Preview:</label>
+        <div class="preview-box" id="mc-preview"></div>
+
+        <div class="button-group">
+            <button id="copy-btn">Copy Text with Codes</button>
+        </div>
+
+        <div class="cheatsheet" id="cheatsheet">
+            </div>
+    </div>
+
+    <script>
+        const colorMap = {
+            '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA',
+            '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
+            '8': '#555555', '9': '#5555FF', 'a': '#55FF55', 'b': '#55FFFF',
+            'c': '#FF5555', 'd': '#FF55FF', 'e': '#FFFF55', 'f': '#FFFFFF'
+        };
+
+        const formatMap = {
+            'l': 'font-weight: bold;',
+            'o': 'font-style: italic;',
+            'n': 'text-decoration: underline;',
+            'm': 'text-decoration: line-through;'
+        };
+
+        const input = document.getElementById('mc-input');
+        const preview = document.getElementById('mc-preview');
+        const copyBtn = document.getElementById('copy-btn');
+
+        // Function to parse and render Minecraft text
+        function renderMinecraftText(text) {
+            // Escape HTML tags so users can't break the page by typing <script>
+            let safeText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            // Treat § the same as &
+            safeText = safeText.replace(/§/g, '&');
+
+            let html = '';
+            let currentColor = '#FFFFFF';
+            let currentFormats = [];
+
+            let parts = safeText.split('&');
+            html += parts[0]; 
+
+            for (let i = 1; i < parts.length; i++) {
+                let part = parts[i];
+                if (part.length === 0) {
+                    html += '&';
+                    continue;
+                }
+
+                let code = part[0].toLowerCase();
+                let rest = part.substring(1);
+
+                if (colorMap[code]) {
+                    currentColor = colorMap[code];
+                    currentFormats = []; // Colors reset formatting in Minecraft
+                } else if (formatMap[code]) {
+                    currentFormats.push(formatMap[code]);
+                } else if (code === 'r') {
+                    currentColor = '#FFFFFF';
+                    currentFormats = [];
+                } else {
+                    // Not a valid code, just print the & and the character
+                    rest = '&' + part;
+                }
+
+                let style = `color: ${currentColor}; ${currentFormats.join(' ')}`;
+                html += `<span style="${style}">${rest}</span>`;
+            }
+            return html;
+        }
+
+        // Live updating
+        input.addEventListener('input', () => {
+            preview.innerHTML = renderMinecraftText(input.value);
+        });
+
+        // Copy functionality
+        copyBtn.addEventListener('click', () => {
+            if(!input.value) return;
+            navigator.clipboard.writeText(input.value).then(() => {
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = 'Copied!';
+                copyBtn.style.backgroundColor = '#55FFFF';
+                setTimeout(() => {
+                    copyBtn.innerText = originalText;
+                    copyBtn.style.backgroundColor = '#55ff55';
+                }, 2000);
+            });
+        });
+
+        // Generate Cheatsheet
+        const cheatsheet = document.getElementById('cheatsheet');
+        for (const [code, color] of Object.entries(colorMap)) {
+            cheatsheet.innerHTML += `
+                <div class="cheat-item">
+                    <div class="color-dot" style="background-color: ${color};"></div>
+                    <span>&${code}</span>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
+
